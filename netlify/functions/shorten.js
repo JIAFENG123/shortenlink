@@ -1,4 +1,4 @@
-const { getStore } = require("@netlify/blobs");
+const { connectLambda, getStore } = require("@netlify/blobs");
 
 const CODE_LENGTH = 6;
 const MAX_RETRY = 10;
@@ -29,6 +29,8 @@ function getBaseUrl(event) {
 }
 
 exports.handler = async (event) => {
+  connectLambda(event);
+
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
@@ -45,39 +47,50 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ error: "请输入有效的 http/https 链接" }) };
   }
 
-  const store = getStore("short-links");
-  let code = null;
+  try {
+    const store = getStore("short-links");
+    let code = null;
 
-  for (let i = 0; i < MAX_RETRY; i += 1) {
-    const candidate = makeCode();
-    const existing = await store.get(candidate, { type: "json" });
-    if (!existing) {
-      code = candidate;
-      break;
+    for (let i = 0; i < MAX_RETRY; i += 1) {
+      const candidate = makeCode();
+      const existing = await store.get(candidate, { type: "json" });
+      if (!existing) {
+        code = candidate;
+        break;
+      }
     }
-  }
 
-  if (!code) {
-    return { statusCode: 500, body: JSON.stringify({ error: "短码生成失败，请重试" }) };
-  }
+    if (!code) {
+      return { statusCode: 500, body: JSON.stringify({ error: "短码生成失败，请重试" }) };
+    }
 
-  await store.set(
-    code,
-    JSON.stringify({
-      longUrl,
-      createdAt: new Date().toISOString(),
-      clicks: 0
-    })
-  );
-
-  const baseUrl = getBaseUrl(event);
-  return {
-    statusCode: 200,
-    headers: { "content-type": "application/json; charset=utf-8" },
-    body: JSON.stringify({
+    await store.set(
       code,
-      longUrl,
-      shortUrl: `${baseUrl}/${code}`
-    })
-  };
+      JSON.stringify({
+        longUrl,
+        createdAt: new Date().toISOString(),
+        clicks: 0
+      })
+    );
+
+    const baseUrl = getBaseUrl(event);
+    return {
+      statusCode: 200,
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({
+        code,
+        longUrl,
+        shortUrl: `${baseUrl}/${code}`
+      })
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({
+        error: "生成失败，请稍后重试",
+        detail: error?.message || "unknown error"
+      })
+    };
+  }
 };
