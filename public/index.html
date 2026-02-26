@@ -282,15 +282,15 @@
         errorEl.hidden = !msg;
       }
 
-      function showResult(url) {
+      function showResult(url, code) {
         if (!url) {
           resultEl.hidden = true;
           return;
         }
         resultEl.className = "result-box";
         resultEl.innerHTML =
-          `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>` +
-          `<button class="copy-btn" type="button" onclick="copyUrl(this)">复制</button>`;
+          `<a href="${url}" target="_blank" rel="noopener noreferrer">/${code}</a>` +
+          `<button class="copy-btn" type="button" onclick="copyUrl(this)">复制链接</button>`;
         resultEl.hidden = false;
       }
 
@@ -328,7 +328,7 @@
           if (!res.ok) {
             throw new Error(data.error || "生成失败，请稍后重试");
           }
-          showResult(data.shortUrl);
+          showResult(data.shortUrl, data.code);
           urlInput.value = "";
           aliasInput.value = "";
           previewEl.textContent = "";
