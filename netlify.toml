@@ -1,14 +1,3 @@
 [build]
   publish = "public"
   functions = "netlify/functions"
-
-[[redirects]]
-  from = "/api/shorten"
-  to = "/.netlify/functions/shorten"
-  status = 200
-
-[[redirects]]
-  from = "/:code"
-  to = "/.netlify/functions/redirect/:code"
-  status = 200
-  force = true
