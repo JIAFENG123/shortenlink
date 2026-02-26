@@ -8,7 +8,7 @@ export default async (req, context) => {
   }
 
   try {
-    const store = getStore("short-links");
+    const store = getStore({ name: "short-links", consistency: "strong" });
     const raw = await store.get(code);
 
     if (!raw) {

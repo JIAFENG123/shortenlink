@@ -48,7 +48,7 @@ export default async (req) => {
   }
 
   try {
-    const store = getStore("short-links");
+    const store = getStore({ name: "short-links", consistency: "strong" });
     let code = null;
 
     for (let i = 0; i < MAX_RETRY; i++) {
