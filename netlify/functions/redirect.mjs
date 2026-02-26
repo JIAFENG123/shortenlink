@@ -1,10 +1,17 @@
 import { getStore } from "@netlify/blobs";
 
 export default async (req, context) => {
-  const { code } = context.params;
+  const rawCode = context.params.code;
 
-  if (!code) {
+  if (!rawCode) {
     return new Response("缺少短码", { status: 400 });
+  }
+
+  let code;
+  try {
+    code = decodeURIComponent(rawCode);
+  } catch {
+    code = rawCode;
   }
 
   try {

@@ -67,7 +67,13 @@
         margin-bottom: 6px;
       }
 
-      input[type="url"] {
+      label .optional {
+        font-weight: 400;
+        color: #64748b;
+        margin-left: 4px;
+      }
+
+      .text-input {
         width: 100%;
         padding: 12px 14px;
         border-radius: 10px;
@@ -75,17 +81,30 @@
         background: #0f172a;
         color: #e2e8f0;
         font-size: 15px;
-        transition: border-color 0.2s;
+        transition: border-color 0.2s, box-shadow 0.2s;
         outline: none;
       }
 
-      input[type="url"]:focus {
+      .text-input:focus {
         border-color: #60a5fa;
         box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
       }
 
-      input[type="url"]::placeholder {
+      .text-input::placeholder {
         color: #64748b;
+      }
+
+      .preview {
+        margin-top: 8px;
+        font-size: 13px;
+        color: #64748b;
+        word-break: break-all;
+        min-height: 20px;
+        transition: color 0.2s;
+      }
+
+      .preview.active {
+        color: #a78bfa;
       }
 
       .btn {
@@ -172,6 +191,13 @@
         font-size: 14px;
       }
 
+      .alias-hint {
+        margin-top: 6px;
+        font-size: 12px;
+        color: #64748b;
+        line-height: 1.4;
+      }
+
       .footer {
         margin-top: 24px;
         text-align: center;
@@ -185,7 +211,7 @@
       <div class="card">
         <h1 class="title">短链接生成器</h1>
         <p class="subtitle">
-          输入完整链接（http / https），一键生成可直接访问的短链。
+          输入完整链接，自定义专属短码或自动生成。
         </p>
 
         <form id="form">
@@ -193,12 +219,32 @@
             <label for="url">长链接</label>
             <input
               id="url"
+              class="text-input"
               type="url"
               placeholder="https://example.com/very-long-path?param=value"
               required
               autocomplete="off"
             />
           </div>
+
+          <div class="form-group">
+            <label for="alias">
+              自定义短码
+              <span class="optional">（可选）</span>
+            </label>
+            <input
+              id="alias"
+              class="text-input"
+              type="text"
+              placeholder="my-blog、🚀、🎉party"
+              autocomplete="off"
+            />
+            <div id="preview" class="preview"></div>
+            <div class="alias-hint">
+              留空则自动生成 · 支持字母、数字、Emoji、中文等 · 1 ~ 32 位
+            </div>
+          </div>
+
           <button class="btn" id="submit" type="submit">生成短链接</button>
         </form>
 
@@ -210,10 +256,25 @@
 
     <script>
       const form = document.getElementById("form");
-      const input = document.getElementById("url");
+      const urlInput = document.getElementById("url");
+      const aliasInput = document.getElementById("alias");
+      const previewEl = document.getElementById("preview");
       const resultEl = document.getElementById("result");
       const errorEl = document.getElementById("error");
       const submitBtn = document.getElementById("submit");
+
+      const origin = location.origin;
+
+      aliasInput.addEventListener("input", () => {
+        const v = aliasInput.value.trim();
+        if (v) {
+          previewEl.textContent = `${origin}/${v}`;
+          previewEl.classList.add("active");
+        } else {
+          previewEl.textContent = "";
+          previewEl.classList.remove("active");
+        }
+      });
 
       function showError(msg) {
         errorEl.className = "error-msg";
@@ -229,11 +290,12 @@
         resultEl.className = "result-box";
         resultEl.innerHTML =
           `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>` +
-          `<button class="copy-btn" type="button" onclick="copyUrl('${url}', this)">复制</button>`;
+          `<button class="copy-btn" type="button" onclick="copyUrl(this)">复制</button>`;
         resultEl.hidden = false;
       }
 
-      function copyUrl(url, btn) {
+      function copyUrl(btn) {
+        const url = btn.previousElementSibling.href;
         navigator.clipboard.writeText(url).then(() => {
           btn.textContent = "已复制";
           btn.classList.add("copied");
@@ -246,24 +308,31 @@
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const longUrl = input.value.trim();
+        const longUrl = urlInput.value.trim();
+        const alias = aliasInput.value.trim();
         showError("");
         showResult("");
         submitBtn.disabled = true;
         submitBtn.textContent = "生成中…";
 
         try {
+          const payload = { longUrl };
+          if (alias) payload.alias = alias;
+
           const res = await fetch("/api/shorten", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ longUrl }),
+            body: JSON.stringify(payload),
           });
           const data = await res.json();
           if (!res.ok) {
             throw new Error(data.error || "生成失败，请稍后重试");
           }
           showResult(data.shortUrl);
-          input.value = "";
+          urlInput.value = "";
+          aliasInput.value = "";
+          previewEl.textContent = "";
+          previewEl.classList.remove("active");
         } catch (err) {
           showError(err.message || "发生未知错误");
         } finally {
