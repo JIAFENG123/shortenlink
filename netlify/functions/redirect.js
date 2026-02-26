@@ -1,9 +1,31 @@
 const { connectLambda, getStore } = require("@netlify/blobs");
 
+function getCodeFromEvent(event) {
+  const queryCode = event.queryStringParameters?.code;
+  if (queryCode) return queryCode;
+
+  const path = event.path || "";
+  const pathCode = path.split("/").filter(Boolean).pop();
+  if (pathCode && pathCode !== "redirect") return pathCode;
+
+  const rawUrl = event.rawUrl;
+  if (rawUrl) {
+    try {
+      const parsed = new URL(rawUrl);
+      const rawPathCode = parsed.pathname.split("/").filter(Boolean).pop();
+      if (rawPathCode && rawPathCode !== "redirect") return rawPathCode;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
 exports.handler = async (event) => {
   connectLambda(event);
 
-  const code = event.queryStringParameters?.code;
+  const code = getCodeFromEvent(event);
   if (!code) {
     return { statusCode: 400, body: "缺少短码" };
   }
