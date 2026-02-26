@@ -2,23 +2,36 @@ const { connectLambda, getStore } = require("@netlify/blobs");
 
 function getCodeFromEvent(event) {
   const queryCode = event.queryStringParameters?.code;
-  if (queryCode) return queryCode;
+  if (queryCode) return decodeURIComponent(String(queryCode).trim());
 
   const path = event.path || "";
   const pathCode = path.split("/").filter(Boolean).pop();
-  if (pathCode && pathCode !== "redirect") return pathCode;
+  if (pathCode && pathCode !== "redirect") return decodeURIComponent(String(pathCode).trim());
 
   const rawUrl = event.rawUrl;
   if (rawUrl) {
     try {
       const parsed = new URL(rawUrl);
       const rawPathCode = parsed.pathname.split("/").filter(Boolean).pop();
-      if (rawPathCode && rawPathCode !== "redirect") return rawPathCode;
+      if (rawPathCode && rawPathCode !== "redirect") return decodeURIComponent(String(rawPathCode).trim());
     } catch {
       return null;
     }
   }
 
+  return null;
+}
+
+function parseStoredData(value) {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
   return null;
 }
 
@@ -32,7 +45,8 @@ exports.handler = async (event) => {
 
   try {
     const store = getStore("short-links");
-    const data = await store.get(code, { type: "json" });
+    const rawData = await store.get(code);
+    const data = parseStoredData(rawData);
 
     if (!data?.longUrl) {
       return {

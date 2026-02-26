@@ -53,7 +53,7 @@ exports.handler = async (event) => {
 
     for (let i = 0; i < MAX_RETRY; i += 1) {
       const candidate = makeCode();
-      const existing = await store.get(candidate, { type: "json" });
+      const existing = await store.get(candidate);
       if (!existing) {
         code = candidate;
         break;
